@@ -1,0 +1,92 @@
+---
+title: "BA 64060 - Assignment 1"
+author: "Disney Maxwell"
+date: "2025-09-06"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## 1. Dataset: Forbes – The Global 2000 Companies – 2025 
+
+This dataset is from kaggle.com and contains financial data of the world's top 2000 companies.\
+Dataset link: <https://www.kaggle.com/datasets/ellimaaac/forbes-the-global-2000-companies-2025>.
+
+## 2. Import Dataset into R
+
+Import financial data into R. 
+
+```{r import}
+library(readr)
+forbes_2000_companies <- read_csv("Forbes_2000_Companies_2025.csv")
+View(forbes_2000_companies)
+```
+## 3.A. Descriptive Statistics - Quantitative Variables 
+
+i. Average Sales of 2000 Companies 
+
+```{r avgSales}
+sales_df <- forbes_2000_companies["Sales ($B)"]
+mean_sales_value <- colMeans(sales_df)
+print(paste0("The Mean sales value of the 2000 companies = ", mean_sales_value))
+```
+
+ii. Range Profit of 2000 Companies 
+
+```{r rangeProfit}
+profit_vector <- forbes_2000_companies[["Profit ($B)"]]
+range_profit_value <- max(profit_vector, na.rm = TRUE) - min(profit_vector, na.rm = TRUE) 
+print(paste0("The Range value for profit of the 2000 companies = ", range_profit_value))
+```
+## 3.B. Descriptive Statistics - Categorical Variables 
+
+i. Number of Company Headquarters in different Countries
+```{r headqrtrFreq}
+headqrtr_freq <- table(forbes_2000_companies["Headquarters"])
+print(paste0("Number of Headquarters across the different Countries:"))
+print(headqrtr_freq)
+```
+
+ii. Country with the most number of Headquarters
+```{r mostHeadqrtr}
+most_freq_headqrtr <- names(which.max(headqrtr_freq))
+print(paste0("Country with the most number of headquarters: ", most_freq_headqrtr))
+```
+
+## 4. Transformations - Convert Sales from Billion to Million dollar values
+```{r millSalesvalues}
+sales_millions_df <- sales_df * 1000
+names(sales_millions_df) <- c("Sales ($M)")
+first_10_companies_sales = head(sales_millions_df, 10)
+print(paste0("First 10 Company Sales in million dollars"))
+print(first_10_companies_sales)
+```
+
+## 5.A. Plot - Quantitative Variable - Top 5 Sales Values
+
+```{r top5SalesCompanies}
+sales_vector <- forbes_2000_companies[["Sales ($B)"]]
+top_5_sales_vector <- sort(sales_vector, decreasing = TRUE)[1:5]
+bar_x_labels <- c("1", "2", "3", "4", "5")
+
+# Plot the vector as a bar chart
+barplot(top_5_sales_vector, 
+        names.arg = bar_x_labels, # Assign labels to bars
+        main = "Top 5 Sales Values", # Set the main title of the plot
+        xlab = "Indexes", # Set the x-axis label
+        ylab = "Sales values", # Set the y-axis label
+        col = "skyblue" # Set the color of the bars
+        )
+```
+
+## 5.B. Scatter Plot - First 10 Companies - Sales and Profit 
+```{r first10Companies}
+first_10_companies <- forbes_2000_companies[1:10, c("Sales ($B)", "Profit ($B)")]
+plot(first_10_companies$`Sales ($B)`, first_10_companies$`Profit ($B)`,
+     xlab = "Sales ($B)", ylab = "Profit ($B)",
+     main = "Scatter Plot of First 10 Companies - Sales and Profit")
+```
