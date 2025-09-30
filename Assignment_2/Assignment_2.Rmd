@@ -1,0 +1,201 @@
+---
+title: "BA 64060 - Assignment 2"
+author: "Disney Maxwell"
+date: "2025-09-28"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Install packages
+```{r Libraries}
+library(readr)
+library(class)
+library(caret)
+library(ISLR)
+library(dplyr)
+```
+
+# Dataset: UniversalBank.csv - Data on 5000 customers
+Import UniversalBank data into R
+```{r Import}
+universal_bank_init<-read_csv("UniversalBank.csv")
+#Rename 2 column names
+universal_bank_init <- universal_bank_init %>%
+  rename(Securities.Account = `Securities Account`,
+         CD.Account = 'CD Account')
+```
+
+# Remove ID and ZIP code. 
+```{r RemoveColumns}
+universal_bank<-universal_bank_init[,-c(1,5)]
+```
+
+# Transform Education categorical predictor into dummy variables
+# Transform Personal Loan to Categorical 
+```{r DummyVariables}
+# Convert numeric to categorical using as.factor()
+universal_bank$Education<-as.factor(universal_bank$Education)
+universal_bank$'Personal Loan'<-as.factor(universal_bank$'Personal Loan')
+
+# Dummy variables for Education
+education_dmy<-dummyVars("~Education",data=universal_bank)
+transformed_univbank_educ<-predict(education_dmy, newdata=universal_bank)
+```
+
+# Final Data frame
+```{r FinalDataFrame}
+universal_bank<-universal_bank[,-6]
+universal_bank_data<-cbind(universal_bank,transformed_univbank_educ)
+```
+
+# First Split: Split Data into 60% for training and 40% for validation
+```{r FirstSplit}
+set.seed(123)
+Train_Index1<-createDataPartition(universal_bank_data$'Personal Loan', p=0.6, list=FALSE)
+Train_Data1<-universal_bank_data[Train_Index1,]
+Validn_Data1<-universal_bank_data[-Train_Index1,]
+```
+
+# Predictors and Labels
+```{r PredictorsandLabels}
+Train_Predictors1<-Train_Data1[,c(1:6,8:14)]
+Validn_Predictors1<-Validn_Data1[,c(1:6,8:14)]
+
+Train_labels1<-Train_Data1[,7]
+Validn_labels1<-Validn_Data1[,7]
+```
+
+# Normalize Data
+```{r NormalizeData}
+set.seed(123)
+# Use preProcess() to normalize 
+Norm_values <- preProcess(Train_Predictors1, method=c("range"))
+
+Train_Predictors1_norm<-predict(Norm_values, Train_Predictors1)
+Validn_Predictors1_norm<-predict(Norm_values, Validn_Predictors1)
+```
+
+# Q1 Test case and train a knn model where k=1
+```{r Q1}
+set.seed(123)
+# Define Q1 Test case
+q1_test_case <- data.frame(
+  Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, 
+  Education.1 = 0, Education.2 = 1, Education.3 = 0, Mortgage = 0, 
+  Securities.Account = 0, CD.Account = 0, Online = 1, CreditCard = 1
+)
+q1_test_case_norm<-predict(Norm_values,q1_test_case)
+
+# knn prediction
+q1_Predicted_Test_label<-knn(Train_Predictors1_norm, q1_test_case_norm, cl=Train_labels1, k=1)
+print(paste0("The Customer would be classified as ", q1_Predicted_Test_label))
+```
+
+# Q2 and Q3 - Choice of K - Hypertuning 
+
+# Q2. The optimal value of k lies in the range of 1 to 20. It's in between overfitting to the predictor information and ignoring this information completely. 
+
+# Q3. Confusion Matrix for Validation Data
+```{r Q3}
+set.seed(123)
+
+# Create an accuracy data frame 
+Accuracy_df<-data.frame(k = seq(1,20,1), Accuracy = rep(0,20))
+
+# Compute knn for different values of k on validation set 
+for(i in 1:20) {
+ Predicted_Label<-knn(Train_Predictors1_norm, Validn_Predictors1_norm, cl=Train_labels1, k=i) 
+ Accuracy_df[i,2]<-confusionMatrix(Predicted_Label, Validn_labels1)$overall[1]
+}
+Accuracy_df
+best_k_value<-which.max(Accuracy_df$Accuracy)
+print(paste0("The best value of k = ",best_k_value))
+print(paste0("Highest Accuracy for the Validation set = ",max(Accuracy_df$Accuracy)))
+```
+
+# Q4 Using the best k and k = 1
+```{r Q4}
+set.seed(123)
+# Define Q4 Test case
+q4_test_case <- data.frame(
+  Age = 40, Experience = 10, Income = 84, Family = 2, CCAvg = 2, 
+  Education.1 = 0, Education.2 = 1, Education.3 = 0, Mortgage = 0, 
+  Securities.Account = 0, CD.Account = 0, Online = 1, CreditCard = 1
+)
+q4_test_case_norm<-predict(Norm_values,q4_test_case)
+
+# knn prediction
+q4_Predicted_Test_label<-knn(Train_Predictors1_norm, q4_test_case_norm, cl=Train_labels1, k=1)
+print(paste0("The Customer would be classified as ", q4_Predicted_Test_label))
+```
+
+# Q5 Repartition data - Training:50%, Validation:30% and Test:20%
+```{r Q5}
+set.seed(123)
+Temp_Index2<-createDataPartition(universal_bank_data$'Personal Loan', p=0.8, list=FALSE)
+Temp_Data2<-universal_bank_data[Temp_Index2,]
+Test_Data2<-universal_bank_data[-Temp_Index2,]
+
+Train_Index2<-createDataPartition(Temp_Data2$'Personal Loan', p=0.5, list=FALSE)
+Train_Data2<-Temp_Data2[Train_Index2,]
+Validn_Data2<-Temp_Data2[-Train_Index2,]
+
+# Predictors and Labels
+Train_Predictors2<-Train_Data2[,c(1:6,8:14)]
+Validn_Predictors2<-Validn_Data2[,c(1:6,8:14)]
+Test_Predictors2<-Test_Data2[,c(1:6,8:14)]
+
+Train_labels2<-Train_Data2[,7]
+Validn_labels2<-Validn_Data2[,7]
+Test_labels2<-Test_Data2[,7]
+
+# Normalize Data
+# Use preProcess() to normalize 
+Norm_values2 <- preProcess(Train_Predictors2, method=c("range"))
+
+Train_Predictors2_norm<-predict(Norm_values2, Train_Predictors2)
+Validn_Predictors2_norm<-predict(Norm_values2, Validn_Predictors2)
+Test_Predictors2_norm<-predict(Norm_values2, Test_Predictors2)
+
+# knn prediction with k from previous question
+q5_Predicted_Test_label_ValidnSet<-knn(Train_Predictors2_norm, Validn_Predictors2_norm, cl=Train_labels2, k=1)
+q5_Predicted_Test_label_TestSet<-knn(Train_Predictors2_norm, Test_Predictors2_norm, cl=Train_labels2, k=1)
+```
+
+```{r Comparison}
+
+# Create an accuracy data frame for the Validation Set
+Accuracy_V2_df<-data.frame(k = seq(1,20,1), Accuracy = rep(0,20))
+
+# Compute knn for different values of k on validation set 
+for(i in 1:20) {
+ Predicted_Label<-knn(Train_Predictors2_norm, Validn_Predictors2_norm, cl=Train_labels2, k=i) 
+ Accuracy_V2_df[i,2]<-confusionMatrix(Predicted_Label, Validn_labels2)$overall[1]
+}
+Accuracy_V2_df
+best_k_value_Vldn<-which.max(Accuracy_V2_df$Accuracy)
+print(paste0("The best value of k = ",best_k_value_Vldn))
+print(paste0("Highest Accuracy for the Validation set = ",max(Accuracy_V2_df$Accuracy)))
+
+# Create an accuracy data frame for the Test Set
+Accuracy_T2_df<-data.frame(k = seq(1,20,1), Accuracy = rep(0,20))
+
+# Compute knn for different values of k on Test set 
+for(i in 1:20) {
+ Predicted_Label<-knn(Train_Predictors2_norm, Test_Predictors2_norm, cl=Train_labels2, k=i) 
+ Accuracy_T2_df[i,2]<-confusionMatrix(Predicted_Label, Test_labels2)$overall[1]
+}
+Accuracy_T2_df
+best_k_value_Test<-which.max(Accuracy_T2_df$Accuracy)
+print(paste0("The best value of k = ",best_k_value_Test))
+print(paste0("Highest Accuracy for the Test set = ",max(Accuracy_T2_df$Accuracy)))
+
+```
+
+On comparing the confusion matrices of the Validation and Test data sets, it is seen that in the Validation set, 
+the Accuracy starts at a higher value for k=1 in comparison to the Test set.  
